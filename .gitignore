@@ -1,0 +1,30 @@
+# Python/runtime caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local secrets and machine-specific configuration
+config/*
+!config/.gitkeep
+.env
+.env.*
+*.local
+
+# Logs, pid files, and generated runtime state
+*.log
+*.pid
+server-*.out.log
+server-*.err.log
+server_*.out.log
+server_*.err.log
+
+# Build artifacts
+*.exe
+*.dll
+*.pdb
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

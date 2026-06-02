@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>夸克分享访问追踪</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f3f6f8;
+        --panel: #ffffff;
+        --soft: #f7fafb;
+        --text: #17212b;
+        --muted: #667483;
+        --line: #dbe4ea;
+        --line-strong: #c8d3dc;
+        --accent: #087f8c;
+        --accent-dark: #05636d;
+        --accent-soft: #e4f5f6;
+        --danger: #b42318;
+        --danger-soft: #fff0ee;
+        --shadow: 0 18px 38px rgba(20, 32, 43, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+        background:
+          linear-gradient(180deg, #e6f3f3 0, rgba(230, 243, 243, 0) 310px),
+          var(--bg);
+        color: var(--text);
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 28px auto 40px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(30px, 5vw, 46px);
+        line-height: 1.08;
+        font-weight: 800;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        max-width: 760px;
+        margin: 10px 0 0;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.65;
+      }
+
+      .nav-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+        padding: 0 13px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--accent-dark);
+        background: rgba(255, 255, 255, 0.86);
+        font-weight: 750;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .stat {
+        min-height: 116px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .stat span {
+        display: block;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .stat strong {
+        display: block;
+        margin-top: 12px;
+        font-size: 36px;
+        line-height: 1;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 360px minmax(0, 1fr);
+        gap: 18px;
+        align-items: start;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .panel-head {
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+        background: var(--soft);
+      }
+
+      .panel-head h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      form {
+        padding: 18px;
+      }
+
+      .field {
+        margin-bottom: 15px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 750;
+      }
+
+      input {
+        width: 100%;
+        min-height: 44px;
+        border: 1px solid var(--line-strong);
+        border-radius: 6px;
+        padding: 10px 12px;
+        font: inherit;
+        color: var(--text);
+        background: #fff;
+        outline: none;
+      }
+
+      input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(8, 127, 140, 0.14);
+      }
+
+      button {
+        min-height: 42px;
+        border: 0;
+        border-radius: 6px;
+        padding: 0 13px;
+        font: inherit;
+        font-weight: 750;
+        color: #fff;
+        background: var(--accent);
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: var(--accent-dark);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
+
+      .ghost {
+        color: var(--accent-dark);
+        background: var(--accent-soft);
+      }
+
+      .ghost:hover {
+        color: #fff;
+        background: var(--accent);
+      }
+
+      .submit {
+        width: 100%;
+      }
+
+      .message {
+        display: none;
+        margin-top: 14px;
+        padding: 11px 12px;
+        border-radius: 6px;
+        line-height: 1.5;
+      }
+
+      .message.show {
+        display: block;
+      }
+
+      .message.ok {
+        color: var(--accent-dark);
+        background: var(--accent-soft);
+      }
+
+      .message.error {
+        color: var(--danger);
+        background: var(--danger-soft);
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 760px;
+      }
+
+      th,
+      td {
+        padding: 13px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--muted);
+        background: var(--soft);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      td.count {
+        width: 92px;
+        font-size: 22px;
+        font-weight: 800;
+      }
+
+      .resource {
+        display: grid;
+        gap: 6px;
+      }
+
+      .resource strong {
+        font-size: 15px;
+      }
+
+      .resource a,
+      .track a {
+        color: var(--accent-dark);
+        line-height: 1.45;
+        overflow-wrap: anywhere;
+      }
+
+      .track {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: start;
+      }
+
+      .empty {
+        padding: 34px 18px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      @media (max-width: 900px) {
+        .layout,
+        .stats {
+          grid-template-columns: 1fr;
+        }
+
+        .topbar {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+
+      @media (max-width: 560px) {
+        main {
+          width: min(100% - 22px, 1180px);
+          margin-top: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="topbar">
+        <div>
+          <h1>夸克分享访问追踪</h1>
+          <p class="subtitle">把夸克网盘原链接登记成追踪链接。对外分享追踪链接后，每次访问都会先记一次数，再自动跳转到原始夸克资源。</p>
+        </div>
+        <a class="nav-link" href="/">转存工具</a>
+      </div>
+
+      <section class="stats" aria-label="访问统计">
+        <div class="stat">
+          <span>所有链接今日访问</span>
+          <strong id="todayTotal">0</strong>
+        </div>
+        <div class="stat">
+          <span>所有链接累计访问</span>
+          <strong id="allTotal">0</strong>
+        </div>
+        <div class="stat">
+          <span>正在追踪资源</span>
+          <strong id="linkTotal">0</strong>
+        </div>
+      </section>
+
+      <div class="layout">
+        <section class="panel">
+          <div class="panel-head">
+            <h2>新增追踪链接</h2>
+          </div>
+          <form id="linkForm">
+            <div class="field">
+              <label for="title">资源名称</label>
+              <input id="title" name="title" autocomplete="off" placeholder="例如：某课程合集" />
+            </div>
+            <div class="field">
+              <label for="url">夸克网盘链接</label>
+              <input id="url" name="url" autocomplete="off" placeholder="https://pan.quark.cn/s/xxxx" required />
+            </div>
+            <button id="submitBtn" class="submit" type="submit">生成追踪链接</button>
+            <div id="message" class="message"></div>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>资源访问明细</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>资源</th>
+                  <th>追踪链接</th>
+                  <th>今日</th>
+                  <th>累计</th>
+                </tr>
+              </thead>
+              <tbody id="linkRows"></tbody>
+            </table>
+            <div id="empty" class="empty">还没有追踪链接。</div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const form = document.querySelector("#linkForm");
+      const submitBtn = document.querySelector("#submitBtn");
+      const message = document.querySelector("#message");
+      const rows = document.querySelector("#linkRows");
+      const empty = document.querySelector("#empty");
+      const todayTotal = document.querySelector("#todayTotal");
+      const allTotal = document.querySelector("#allTotal");
+      const linkTotal = document.querySelector("#linkTotal");
+
+      loadLinks();
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        submitBtn.disabled = true;
+        setMessage("正在生成追踪链接。", "ok");
+
+        try {
+          const payload = Object.fromEntries(new FormData(form).entries());
+          const response = await fetch("/api/tracker/links", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const json = await response.json();
+          if (!json.ok) throw new Error(json.error || "生成失败");
+          render(json);
+          form.reset();
+          await copyText(json.link.track_url);
+          setMessage("已生成并复制追踪链接。", "ok");
+        } catch (error) {
+          setMessage(error.message || String(error), "error");
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+
+      rows.addEventListener("click", async (event) => {
+        const button = event.target.closest("button[data-copy]");
+        if (!button) return;
+        await copyText(button.dataset.copy);
+        setMessage("已复制追踪链接。", "ok");
+      });
+
+      async function loadLinks() {
+        const response = await fetch("/api/tracker/links");
+        const json = await response.json();
+        if (json.ok) render(json);
+      }
+
+      function render(data) {
+        todayTotal.textContent = data.stats.today;
+        allTotal.textContent = data.stats.total;
+        linkTotal.textContent = data.stats.links;
+        rows.innerHTML = "";
+        empty.style.display = data.links.length ? "none" : "block";
+
+        for (const link of data.links) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>
+              <div class="resource">
+                <strong></strong>
+                <a target="_blank" rel="noreferrer"></a>
+              </div>
+            </td>
+            <td>
+              <div class="track">
+                <a target="_blank" rel="noreferrer"></a>
+                <button class="ghost" type="button">复制</button>
+              </div>
+            </td>
+            <td class="count"></td>
+            <td class="count"></td>
+          `;
+          tr.querySelector(".resource strong").textContent = link.title;
+          const source = tr.querySelector(".resource a");
+          source.href = link.url;
+          source.textContent = link.url;
+          const track = tr.querySelector(".track a");
+          track.href = link.track_url;
+          track.textContent = link.track_url;
+          const copy = tr.querySelector(".track button");
+          copy.dataset.copy = link.track_url;
+          tr.querySelectorAll(".count")[0].textContent = link.today_count;
+          tr.querySelectorAll(".count")[1].textContent = link.total_count;
+          rows.appendChild(tr);
+        }
+      }
+
+      async function copyText(text) {
+        await navigator.clipboard.writeText(text || "");
+      }
+
+      function setMessage(text, type) {
+        message.textContent = text;
+        message.className = `message show ${type}`;
+      }
+    </script>
+  </body>
+</html>

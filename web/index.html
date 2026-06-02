@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>夸克转存短链工作台</title>
+    <style>
+      :root {
+        --bg: #fbfaf8;
+        --panel: #fff;
+        --soft: #faf8f4;
+        --text: #25211d;
+        --muted: #8a8178;
+        --line: #e8e1d8;
+        --coffee: #2a2420;
+        --coffee-2: #3b2c25;
+        --orange: #d86b3f;
+        --blue-soft: #eaf4ff;
+        --blue: #2563eb;
+        --green: #2f9f75;
+        --green-soft: #eaf7f0;
+        --red: #b42318;
+        --red-soft: #fff0ee;
+        --shadow: 0 22px 48px rgba(37, 33, 29, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", Arial, sans-serif;
+      }
+
+      main {
+        width: min(1120px, calc(100% - 32px));
+        margin: 44px auto 54px;
+      }
+
+      .eyebrow {
+        color: var(--orange);
+        font-size: 13px;
+        font-weight: 850;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 14px 0 0;
+        font-family: Georgia, "Times New Roman", "Microsoft YaHei", serif;
+        font-size: clamp(42px, 6vw, 68px);
+        line-height: 1.06;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        margin: 18px 0 0;
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.7;
+      }
+
+      .overview {
+        margin: 30px 0 34px;
+        padding: 28px 44px;
+        border-radius: 18px;
+        color: #f7f2ee;
+        background:
+          radial-gradient(circle at 100% 0, rgba(216, 107, 63, 0.22), transparent 42%),
+          linear-gradient(135deg, var(--coffee), var(--coffee-2));
+        box-shadow: var(--shadow);
+      }
+
+      .overview-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 26px;
+        font-weight: 850;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #55c98d;
+        box-shadow: 0 0 0 4px rgba(85, 201, 141, 0.16);
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 18px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 26px;
+      }
+
+      .step {
+        color: rgba(255, 255, 255, 0.62);
+      }
+
+      .step strong {
+        display: block;
+        color: #fff;
+        font-size: 18px;
+      }
+
+      .step span {
+        display: block;
+        margin-top: 8px;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .step.active strong,
+      .step.done strong {
+        color: #ffd7bf;
+      }
+
+      .section-title {
+        margin: 0 0 20px;
+        font-family: Georgia, "Times New Roman", "Microsoft YaHei", serif;
+        font-size: 28px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 360px;
+        gap: 18px;
+        align-items: start;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      form,
+      .panel-body {
+        padding: 28px 32px 32px;
+      }
+
+      label {
+        display: block;
+        margin: 0 0 10px;
+        font-weight: 850;
+      }
+
+      textarea,
+      input {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 13px 15px;
+        color: var(--text);
+        background: #fff;
+        font: inherit;
+        outline: none;
+      }
+
+      textarea {
+        min-height: 128px;
+        resize: vertical;
+        line-height: 1.7;
+      }
+
+      textarea:focus,
+      input:focus {
+        border-color: #c9b9aa;
+        box-shadow: 0 0 0 3px rgba(216, 107, 63, 0.1);
+      }
+
+      .hint {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-top: 18px;
+      }
+
+      .field {
+        margin-top: 18px;
+      }
+
+      .check {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin: 18px 0;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .check input {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+      }
+
+      button {
+        min-height: 52px;
+        border: 0;
+        border-radius: 10px;
+        padding: 0 18px;
+        color: #fff;
+        background: var(--coffee);
+        font: inherit;
+        font-weight: 850;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #171411;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .actions-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 150px;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .ghost {
+        min-height: 42px;
+        color: var(--coffee);
+        background: #f1ebe3;
+      }
+
+      .ghost:hover {
+        color: #fff;
+        background: var(--coffee);
+      }
+
+      .danger {
+        min-height: 46px;
+        border: 1px solid #f0c7c0;
+        color: var(--red);
+        background: var(--red-soft);
+      }
+
+      .danger:hover {
+        color: #fff;
+        background: var(--red);
+      }
+
+      .message {
+        display: none;
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 10px;
+        line-height: 1.6;
+      }
+
+      .message.show {
+        display: block;
+      }
+
+      .message.ok {
+        color: #1f6b4c;
+        background: var(--green-soft);
+      }
+
+      .message.error {
+        color: var(--red);
+        background: var(--red-soft);
+      }
+
+      .message.warning {
+        color: #8a5a00;
+        background: #fff5d6;
+      }
+
+      .result {
+        display: none;
+      }
+
+      .result.show {
+        display: block;
+      }
+
+      .output {
+        display: grid;
+        gap: 14px;
+      }
+
+      .output-card {
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fffdfa;
+      }
+
+      .output-card span {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .copy-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .copy-row a,
+      .copy-row input {
+        display: block;
+        min-height: 42px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--orange);
+        font-weight: 850;
+        overflow-wrap: anywhere;
+      }
+
+      .side-card {
+        padding: 22px;
+      }
+
+      .side-card h3 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+
+      .side-list {
+        display: grid;
+        gap: 12px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .notice {
+        display: flex;
+        gap: 12px;
+        margin-top: 18px;
+        padding: 16px 18px;
+        border: 1px solid #cfe0f5;
+        border-radius: 10px;
+        color: #2c5f91;
+        background: var(--blue-soft);
+        line-height: 1.65;
+      }
+
+      .local-exit {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 16px;
+        align-items: center;
+        margin-top: 28px;
+        padding: 18px 20px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fffdfa;
+      }
+
+      .local-exit h2 {
+        margin: 0;
+        font-size: 17px;
+      }
+
+      .local-exit .hint {
+        margin-top: 6px;
+      }
+
+      .local-exit .danger {
+        min-width: 142px;
+      }
+
+      #shutdownHint {
+        grid-column: 1 / -1;
+        margin: 0;
+      }
+
+      @media (max-width: 900px) {
+        main {
+          width: min(100% - 22px, 1120px);
+          margin-top: 24px;
+        }
+
+        .layout,
+        .steps,
+        .grid,
+        .actions-row,
+        .local-exit {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="eyebrow">LOCAL · QUARK TRANSFER</div>
+      <h1>转存资源，生成短链</h1>
+      <p class="subtitle">本地负责夸克转存和 Cookie 安全，云端负责短链、二维码引导和访问统计。</p>
+
+      <section class="overview">
+        <div class="overview-title"><span class="dot"></span><span>完整工作流</span></div>
+        <div class="steps">
+          <div class="step active" data-step="1"><strong>1. 粘贴分享</strong><span>输入夸克分享链接、提取码和 Cookie。</span></div>
+          <div class="step" data-step="2"><strong>2. 本地转存</strong><span>保存到你的夸克网盘，并创建新分享。</span></div>
+          <div class="step" data-step="3"><strong>3. 生成短链</strong><span>把新分享链接发送到 s.panlays.com。</span></div>
+          <div class="step" data-step="4"><strong>4. 复制发布</strong><span>同时得到夸克原链和追踪短链。</span></div>
+        </div>
+      </section>
+
+      <div class="layout">
+        <section>
+          <h2 class="section-title">转存任务</h2>
+          <section class="panel">
+            <form id="transferForm">
+              <div>
+                <label for="url">夸克分享文本</label>
+                <textarea id="url" name="url" autocomplete="off" placeholder="粘贴完整分享文本，或直接粘贴 https://pan.quark.cn/s/xxxx" required></textarea>
+                <div class="hint">支持标题、链接、提取码混合粘贴；工具会自动识别夸克链接和提取码。</div>
+              </div>
+
+              <div class="grid">
+                <div>
+                  <label for="passcode">原链接提取码</label>
+                  <input id="passcode" name="passcode" autocomplete="off" placeholder="没有就留空" />
+                </div>
+                <div>
+                  <label for="target_fid">保存目录 fid</label>
+                  <input id="target_fid" name="target_fid" autocomplete="off" placeholder="留空表示根目录" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="share_title">新分享标题</label>
+                <input id="share_title" name="share_title" autocomplete="off" placeholder="留空则沿用原分享标题" />
+              </div>
+
+              <div class="field">
+                <label for="cookie">夸克 Cookie</label>
+                <textarea id="cookie" name="cookie" autocomplete="off" placeholder="也可以留空，服务端会读取 config/cookie.txt 或 QUARK_COOKIE"></textarea>
+                <div class="hint">Cookie 只提交给 127.0.0.1 本地服务，不会发送到云端短链服务。</div>
+              </div>
+
+              <label class="check">
+                <input id="autoShortlink" name="auto_shortlink" type="checkbox" checked />
+                <span>转存完成后自动生成短链。短链会指向转存后新生成的夸克分享链接。</span>
+              </label>
+
+              <label class="check">
+                <input id="rememberCookie" type="checkbox" />
+                <span>在当前浏览器记住 Cookie。只保存在这个浏览器的 localStorage。</span>
+              </label>
+
+              <div class="actions-row">
+                <button id="submitBtn" type="submit">开始转存并生成短链 →</button>
+                <button id="clearBtn" class="ghost" type="button">清空任务</button>
+              </div>
+              <div id="message" class="message"></div>
+            </form>
+          </section>
+
+          <div class="notice">
+            <strong>i</strong>
+            <span>如果短链生成失败，夸克转存结果仍会保留并显示，可稍后重试生成短链。</span>
+          </div>
+        </section>
+
+        <aside>
+          <section id="result" class="panel side-card result">
+            <h3>生成结果</h3>
+            <p id="resultMeta" class="hint"></p>
+            <div class="output">
+              <div class="output-card">
+                <span>追踪短链</span>
+                <div class="copy-row"><a id="shortLink" href="#" target="_blank" rel="noreferrer"></a><button class="ghost" id="copyShort" type="button">复制</button></div>
+              </div>
+              <div class="output-card">
+                <span>夸克自动填码链接</span>
+                <div class="copy-row"><a id="autoLink" href="#" target="_blank" rel="noreferrer"></a><button class="ghost" id="copyAuto" type="button">复制</button></div>
+              </div>
+              <div class="output-card">
+                <span>夸克原始分享链接</span>
+                <div class="copy-row"><a id="rawLink" href="#" target="_blank" rel="noreferrer"></a><button class="ghost" id="copyRaw" type="button">复制</button></div>
+              </div>
+              <div class="output-card">
+                <span>提取码</span>
+                <div class="copy-row"><input id="pwdOut" readonly /><button class="ghost" id="copyPwd" type="button">复制</button></div>
+              </div>
+              <button id="copyAll" type="button">复制完整发布文案</button>
+            </div>
+          </section>
+
+          <section class="panel side-card" style="margin-top: 18px">
+            <h3>使用提示</h3>
+            <ul class="side-list">
+              <li>短链服务地址：<strong>s.panlays.com</strong></li>
+              <li>短链 Token 配置在本地 <strong>config/shortlink_token.txt</strong>。</li>
+              <li>最终分享建议使用短链，PC 端会显示二维码引导手机访问。</li>
+            </ul>
+          </section>
+
+        </aside>
+      </div>
+
+      <section class="local-exit" aria-labelledby="localExitTitle">
+        <div>
+          <h2 id="localExitTitle">本机工具</h2>
+          <p class="hint">只退出当前电脑上的 127.0.0.1 本地服务，不影响 s.panlays.com 云端后台和已生成短链。</p>
+        </div>
+        <button id="shutdownBtn" class="danger" type="button">退出本机工具</button>
+        <p id="shutdownHint" class="hint"></p>
+      </section>
+    </main>
+
+    <script>
+      const form = document.querySelector("#transferForm");
+      const submitBtn = document.querySelector("#submitBtn");
+      const message = document.querySelector("#message");
+      const resultBox = document.querySelector("#result");
+      const resultMeta = document.querySelector("#resultMeta");
+      const shortLink = document.querySelector("#shortLink");
+      const autoLink = document.querySelector("#autoLink");
+      const rawLink = document.querySelector("#rawLink");
+      const pwdOut = document.querySelector("#pwdOut");
+      const targetFidInput = document.querySelector("#target_fid");
+      const cookieInput = document.querySelector("#cookie");
+      const rememberCookie = document.querySelector("#rememberCookie");
+      const autoShortlink = document.querySelector("#autoShortlink");
+      const clearBtn = document.querySelector("#clearBtn");
+      const shutdownBtn = document.querySelector("#shutdownBtn");
+      const shutdownHint = document.querySelector("#shutdownHint");
+      const steps = Array.from(document.querySelectorAll(".step"));
+      let lastResult = null;
+
+      const savedCookie = localStorage.getItem("quark_transfer_cookie");
+      if (savedCookie) {
+        cookieInput.value = savedCookie;
+        rememberCookie.checked = true;
+      }
+
+      loadConfig();
+
+      rememberCookie.addEventListener("change", () => {
+        if (!rememberCookie.checked) {
+          localStorage.removeItem("quark_transfer_cookie");
+        } else if (cookieInput.value.trim()) {
+          localStorage.setItem("quark_transfer_cookie", cookieInput.value.trim());
+        }
+      });
+
+      cookieInput.addEventListener("input", () => {
+        if (rememberCookie.checked) {
+          localStorage.setItem("quark_transfer_cookie", cookieInput.value.trim());
+        }
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        setStep(2);
+        setMessage("正在读取分享信息并转存，请稍等。", "ok");
+        submitBtn.disabled = true;
+        resultBox.classList.remove("show");
+
+        const data = Object.fromEntries(new FormData(form).entries());
+        data.auto_shortlink = autoShortlink.checked;
+        if (rememberCookie.checked && data.cookie) {
+          localStorage.setItem("quark_transfer_cookie", data.cookie.trim());
+        }
+
+        try {
+          const response = await fetch("/api/transfer", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+          const json = await response.json();
+          if (!json.ok) throw new Error(json.error || "处理失败");
+          setStep(json.short_url ? 4 : 3);
+          lastResult = json;
+          renderResult(json);
+          if (json.short_url) {
+            setMessage(`完成：已转存 ${json.file_count || 0} 个项目，并生成短链。`, "ok");
+          } else if (json.shortlink_error) {
+            setMessage(`转存完成，但短链生成失败：${json.shortlink_error}`, "warning");
+          } else {
+            setMessage(`完成：已转存 ${json.file_count || 0} 个项目。`, "ok");
+          }
+        } catch (error) {
+          setMessage(error.message || String(error), "error");
+          setStep(1);
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+
+      clearBtn.addEventListener("click", () => {
+        ["url", "passcode", "share_title"].forEach((id) => {
+          document.querySelector(`#${id}`).value = "";
+        });
+        resultBox.classList.remove("show");
+        lastResult = null;
+        setStep(1);
+        setMessage("已清空链接和标题，保存目录 fid 已保留。", "ok");
+        document.querySelector("#url").focus();
+      });
+
+      document.querySelector("#copyShort").addEventListener("click", () => {
+        if (lastResult) copyText(lastResult.short_url || "");
+      });
+      document.querySelector("#copyAuto").addEventListener("click", () => {
+        if (lastResult) copyText(lastResult.share_url_with_pwd || lastResult.share_url);
+      });
+      document.querySelector("#copyRaw").addEventListener("click", () => {
+        if (lastResult) copyText(lastResult.share_url || "");
+      });
+      document.querySelector("#copyPwd").addEventListener("click", () => {
+        if (lastResult) copyText(lastResult.share_pwd || "");
+      });
+      document.querySelector("#copyAll").addEventListener("click", () => {
+        if (!lastResult) return;
+        const publishUrl = lastResult.short_url || lastResult.share_url_with_pwd || lastResult.share_url;
+        copyText(`${lastResult.title || "夸克分享"}\n${publishUrl}`);
+      });
+
+      shutdownBtn.addEventListener("click", async () => {
+        const confirmed = window.confirm("确定退出本机工具吗？只会关闭当前电脑上的 127.0.0.1 服务，s.panlays.com 云端后台和已生成短链不会受影响。");
+        if (!confirmed) return;
+        shutdownBtn.disabled = true;
+        shutdownHint.textContent = "正在退出本机工具...";
+        setMessage("本机工具正在退出。下次使用请双击启动器重新打开。", "warning");
+        try {
+          await fetch("/api/shutdown", { method: "POST" });
+          shutdownHint.textContent = "本机工具已退出，可以直接关闭这个浏览器页面。";
+        } catch (error) {
+          shutdownHint.textContent = "退出请求已发送。如果页面稍后无法刷新，说明本机工具已经退出。";
+        }
+      });
+
+      function renderResult(data) {
+        const preferredUrl = data.share_url_with_pwd || data.share_url;
+        setLink(shortLink, data.short_url || "");
+        setLink(autoLink, preferredUrl);
+        setLink(rawLink, data.share_url || "");
+        pwdOut.value = data.share_pwd || "";
+        resultMeta.textContent = `${data.title || "未命名分享"} · ${data.file_count || 0} 个项目`;
+        resultBox.classList.add("show");
+      }
+
+      function setLink(anchor, value) {
+        anchor.href = value || "#";
+        anchor.textContent = value || "未生成";
+      }
+
+      async function loadConfig() {
+        try {
+          const response = await fetch("/api/config");
+          const json = await response.json();
+          if (json.ok && json.target_fid && !targetFidInput.value.trim()) {
+            targetFidInput.value = json.target_fid;
+          }
+          if (json.ok && !json.shortlink_enabled) {
+            setMessage("未配置短链 Token。可以先转存，配置 config/shortlink_token.txt 后再自动生成短链。", "warning");
+          }
+        } catch (error) {
+          // Config is optional; ignore startup read failures.
+        }
+      }
+
+      async function copyText(text) {
+        await navigator.clipboard.writeText(text || "");
+        setMessage("已复制。", "ok");
+      }
+
+      function setMessage(text, type) {
+        message.textContent = text;
+        message.className = `message show ${type}`;
+      }
+
+      function setStep(activeIndex) {
+        steps.forEach((step, index) => {
+          const current = index + 1;
+          step.classList.toggle("done", current < activeIndex);
+          step.classList.toggle("active", current === activeIndex);
+        });
+      }
+    </script>
+  </body>
+</html>
