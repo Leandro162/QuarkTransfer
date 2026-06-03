@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Lock, Thread
 from typing import Any
+from urllib.error import HTTPError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
@@ -24,7 +25,10 @@ TARGET_FID_FILE = ROOT / "config" / "target_fid.txt"
 TRACKER_FILE = ROOT / "config" / "tracked_links.json"
 SHORTLINK_TOKEN_FILE = ROOT / "config" / "shortlink_token.txt"
 SHORTLINK_API_FILE = ROOT / "config" / "shortlink_api.txt"
+FEISHU_CONFIG_FILE = ROOT / "config" / "feishu.json"
 DEFAULT_SHORTLINK_API = "https://s.panlays.com/api/links"
+FEISHU_TOKEN_API = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
+FEISHU_RECORD_API = "https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records"
 QUARK_SHARE_URL_RE = re.compile(r"https?://pan\.quark\.cn/s/[A-Za-z0-9_-]+(?:[/?#][^\s\"'<>，。；、]*)?", re.I)
 PASSCODE_RE = re.compile(r"(?:提取码|提取碼|密码|密碼|访问码|口令|pwd|passcode|code)\s*[:：]?\s*([A-Za-z0-9]{4,12})", re.I)
 DATE_YEAR = r"(?:19|20)\d{2}"
@@ -62,6 +66,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     "target_fid": load_target_fid(),
                     "shortlink_enabled": bool(load_shortlink_token()),
                     "shortlink_api": load_shortlink_api(),
+                    "feishu_enabled": bool(load_feishu_config()),
                 }
             )
             return
@@ -204,6 +209,10 @@ def transfer(payload: dict[str, Any]) -> dict[str, Any]:
             )
             result["shortlink"] = shortlink
             result["short_url"] = shortlink.get("short_url") or ""
+            try:
+                result["feishu"] = sync_feishu_record(result)
+            except Exception as exc:  # noqa: BLE001
+                result["feishu_error"] = str(exc)
         except Exception as exc:  # noqa: BLE001
             result["shortlink_error"] = str(exc)
     return result
@@ -294,6 +303,21 @@ def load_shortlink_token() -> str:
     return ""
 
 
+def load_feishu_config() -> dict[str, str]:
+    if not FEISHU_CONFIG_FILE.exists():
+        return {}
+    try:
+        raw = json.loads(FEISHU_CONFIG_FILE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
+    return {
+        "app_id": str(raw.get("app_id") or "").strip(),
+        "app_secret": str(raw.get("app_secret") or "").strip(),
+        "app_token": str(raw.get("app_token") or "").strip(),
+        "table_id": str(raw.get("table_id") or "").strip(),
+    }
+
+
 def create_cloud_shortlink(payload: dict[str, Any]) -> dict[str, Any]:
     token = load_shortlink_token()
     if not token:
@@ -310,15 +334,80 @@ def create_cloud_shortlink(payload: dict[str, Any]) -> dict[str, Any]:
             "User-Agent": "QuarkTransfer/1.0",
         },
     )
-    with urlopen(request, timeout=20) as response:
-        raw = response.read().decode("utf-8")
-    data = json.loads(raw)
+    data = open_json(request, timeout=20)
     if not data.get("ok"):
         raise RuntimeError(str(data.get("error") or "短链生成失败"))
     link = data.get("link")
     if not isinstance(link, dict) or not link.get("short_url"):
         raise RuntimeError("短链服务没有返回 short_url")
     return link
+
+
+def sync_feishu_record(result: dict[str, Any]) -> dict[str, Any]:
+    config = load_feishu_config()
+    if not all(config.values()):
+        raise RuntimeError("未配置飞书同步，请设置 config/feishu.json。")
+
+    tenant_token = get_feishu_tenant_token(config)
+    api_url = FEISHU_RECORD_API.format(app_token=config["app_token"], table_id=config["table_id"])
+    quark_url = result.get("share_url_with_pwd") or result.get("share_url") or ""
+    short_url = result.get("short_url") or ""
+    fields = {
+        "文件名称": result.get("title") or "未命名资源",
+        "软件关键词": result.get("title") or "未命名资源",
+        "夸克网盘": {"text": quark_url, "link": quark_url},
+        "短链": {"text": short_url, "link": short_url},
+    }
+    body = json.dumps({"fields": fields}, ensure_ascii=False).encode("utf-8")
+    request = Request(
+        api_url,
+        data=body,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {tenant_token}",
+            "Content-Type": "application/json; charset=utf-8",
+            "User-Agent": "QuarkTransfer/1.0",
+        },
+    )
+    data = open_json(request, timeout=20)
+    if data.get("code") != 0:
+        raise RuntimeError(str(data.get("msg") or data.get("message") or "飞书同步失败"))
+    return {
+        "ok": True,
+        "record_id": ((data.get("data") or {}).get("record") or {}).get("record_id") or "",
+    }
+
+
+def get_feishu_tenant_token(config: dict[str, str]) -> str:
+    body = json.dumps(
+        {
+            "app_id": config["app_id"],
+            "app_secret": config["app_secret"],
+        },
+        ensure_ascii=False,
+    ).encode("utf-8")
+    request = Request(
+        FEISHU_TOKEN_API,
+        data=body,
+        method="POST",
+        headers={
+            "Content-Type": "application/json; charset=utf-8",
+            "User-Agent": "QuarkTransfer/1.0",
+        },
+    )
+    data = open_json(request, timeout=20)
+    if data.get("code") != 0 or not data.get("tenant_access_token"):
+        raise RuntimeError(str(data.get("msg") or data.get("message") or "获取飞书访问凭证失败"))
+    return str(data["tenant_access_token"])
+
+
+def open_json(request: Request, timeout: int) -> dict[str, Any]:
+    try:
+        with urlopen(request, timeout=timeout) as response:
+            raw = response.read().decode("utf-8")
+    except HTTPError as exc:
+        raw = exc.read().decode("utf-8")
+    return json.loads(raw)
 
 
 def tracker_snapshot(base_url: str) -> dict[str, Any]:

@@ -424,7 +424,7 @@
           <div class="step active" data-step="1"><strong>1. 粘贴分享</strong><span>输入夸克分享链接、提取码和 Cookie。</span></div>
           <div class="step" data-step="2"><strong>2. 本地转存</strong><span>保存到你的夸克网盘，并创建新分享。</span></div>
           <div class="step" data-step="3"><strong>3. 生成短链</strong><span>把新分享链接发送到 s.panlays.com。</span></div>
-          <div class="step" data-step="4"><strong>4. 复制发布</strong><span>同时得到夸克原链和追踪短链。</span></div>
+          <div class="step" data-step="4"><strong>4. 同步发布</strong><span>得到夸克原链、追踪短链，并同步飞书。</span></div>
         </div>
       </section>
 
@@ -515,6 +515,7 @@
             <ul class="side-list">
               <li>短链服务地址：<strong>s.panlays.com</strong></li>
               <li>短链 Token 配置在本地 <strong>config/shortlink_token.txt</strong>。</li>
+              <li>飞书同步配置在本地 <strong>config/feishu.json</strong>。</li>
               <li>最终分享建议使用短链，PC 端会显示二维码引导手机访问。</li>
             </ul>
           </section>
@@ -599,7 +600,8 @@
           lastResult = json;
           renderResult(json);
           if (json.short_url) {
-            setMessage(`完成：已转存 ${json.file_count || 0} 个项目，并生成短链。`, "ok");
+            const feishuText = json.feishu?.ok ? "飞书已同步。" : (json.feishu_error ? `飞书同步失败：${json.feishu_error}` : "飞书未同步。");
+            setMessage(`完成：已转存 ${json.file_count || 0} 个项目，并生成短链。${feishuText}`, json.feishu_error ? "warning" : "ok");
           } else if (json.shortlink_error) {
             setMessage(`转存完成，但短链生成失败：${json.shortlink_error}`, "warning");
           } else {
@@ -680,6 +682,8 @@
           }
           if (json.ok && !json.shortlink_enabled) {
             setMessage("未配置短链 Token。可以先转存，配置 config/shortlink_token.txt 后再自动生成短链。", "warning");
+          } else if (json.ok && json.feishu_enabled) {
+            setMessage("飞书同步已启用：生成短链后会写入多维表格。", "ok");
           }
         } catch (error) {
           // Config is optional; ignore startup read failures.
