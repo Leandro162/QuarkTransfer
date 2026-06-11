@@ -1,27 +1,19 @@
 Option Explicit
 
-Dim shell, fso, root, python, server, command, url, ready, i, request
+Dim shell, command, url, ready, i, request, exitCode
 
 Set shell = CreateObject("WScript.Shell")
-Set fso = CreateObject("Scripting.FileSystemObject")
 
-root = fso.GetParentFolderName(WScript.ScriptFullName)
-python = shell.ExpandEnvironmentStrings("%USERPROFILE%") & "\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
-server = root & "\server.py"
 url = "http://127.0.0.1:8765/"
+command = "wsl.exe -d Ubuntu-24.04 -- bash /home/xuelong/projects/Tools/QuarkTransfer/start_home_service.sh"
+exitCode = shell.Run(command, 0, True)
 
-If Not fso.FileExists(python) Then
-  MsgBox "Python runtime was not found: " & python, vbCritical, "Quark Transfer"
-  WScript.Quit 1
+If exitCode <> 0 Then
+  MsgBox "Home directory QuarkTransfer failed to start." & vbCrLf & _
+    "Check /home/xuelong/projects/Tools/QuarkTransfer/config/tracker.log", _
+    vbCritical, "Quark Transfer"
+  WScript.Quit exitCode
 End If
-
-If Not fso.FileExists(server) Then
-  MsgBox "server.py was not found: " & server, vbCritical, "Quark Transfer"
-  WScript.Quit 1
-End If
-
-command = """" & python & """ """ & server & """ --host 127.0.0.1 --port 8765"
-shell.Run command, 0, False
 
 ready = False
 For i = 1 To 30
@@ -37,5 +29,10 @@ For i = 1 To 30
   If ready Then Exit For
   WScript.Sleep 300
 Next
+
+If Not ready Then
+  MsgBox "QuarkTransfer did not respond on port 8765.", vbCritical, "Quark Transfer"
+  WScript.Quit 1
+End If
 
 shell.Run url, 1, False
