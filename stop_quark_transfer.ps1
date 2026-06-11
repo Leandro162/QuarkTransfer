@@ -1,13 +1,9 @@
 $ErrorActionPreference = "Stop"
 
-$connections = Get-NetTCPConnection -LocalPort 8765 -State Listen -ErrorAction SilentlyContinue
-if (-not $connections) {
-  Write-Host "Quark transfer is not running on port 8765."
-  exit 0
+try {
+  Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:8765/api/shutdown" | Out-Null
+  Write-Host "QuarkTransfer shutdown request sent."
 }
-
-$pids = $connections | Select-Object -ExpandProperty OwningProcess -Unique
-foreach ($processId in $pids) {
-  Stop-Process -Id $processId -Force
-  Write-Host "Stopped process on port 8765: $processId"
+catch {
+  Write-Host "QuarkTransfer is not running on port 8765."
 }
