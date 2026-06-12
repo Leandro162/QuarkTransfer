@@ -29,6 +29,23 @@ Tracker page:
 http://127.0.0.1:8765/tracker
 ```
 
+## CSV Batch Transfer
+
+Switch the page to "CSV Batch" and upload a CSV file to process transfers, new shares, short links, and Feishu synchronization sequentially.
+
+Recommended headers:
+
+```csv
+文件名称,夸克链接,提取码
+Example resource,https://pan.quark.cn/s/xxxx,abcd
+```
+
+- Title aliases: `资源名称`, `标题`, `软件关键词`, or `title`.
+- URL aliases: `夸克网盘`, `链接`, `分享链接`, or `URL`.
+- Passcode aliases: `密码`, `访问码`, `passcode`, or `pwd`.
+- UTF-8 and GBK files are supported, with up to 100 valid rows per batch.
+- Rows run in CSV order. One failed row does not stop the remaining rows.
+
 ## Fixed Target Folder
 
 If you always save files into the same Quark folder, create:

@@ -287,6 +287,127 @@
         background: #fff5d6;
       }
 
+      .mode-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 22px;
+        padding: 4px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--soft);
+      }
+
+      .mode-tab {
+        flex: 1;
+        min-height: 42px;
+        color: var(--muted);
+        background: transparent;
+      }
+
+      .mode-tab:hover,
+      .mode-tab.active {
+        color: #fff;
+        background: var(--coffee);
+      }
+
+      .mode-panel {
+        display: none;
+      }
+
+      .mode-panel.active {
+        display: block;
+      }
+
+      .upload-box {
+        display: grid;
+        place-items: center;
+        min-height: 150px;
+        margin: 0;
+        border: 1px dashed #c9b9aa;
+        border-radius: 10px;
+        color: var(--coffee);
+        background: #fffdfa;
+        cursor: pointer;
+        text-align: center;
+      }
+
+      .upload-box:hover {
+        border-color: var(--orange);
+        background: var(--soft);
+      }
+
+      .upload-box strong,
+      .upload-box span {
+        display: block;
+      }
+
+      .upload-box span {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 400;
+      }
+
+      .csv-tools {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 12px;
+      }
+
+      .csv-tools .ghost {
+        min-height: 38px;
+      }
+
+      .batch-results {
+        display: none;
+        margin-top: 18px;
+        border-top: 1px solid var(--line);
+        padding-top: 18px;
+      }
+
+      .batch-results.show {
+        display: block;
+      }
+
+      .batch-list {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .batch-row {
+        padding: 13px 14px;
+        border: 1px solid #cfe8da;
+        border-radius: 8px;
+        background: var(--green-soft);
+      }
+
+      .batch-row.error {
+        border-color: #f0c7c0;
+        background: var(--red-soft);
+      }
+
+      .batch-row-head {
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        font-weight: 850;
+      }
+
+      .batch-row p {
+        margin: 7px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+        overflow-wrap: anywhere;
+      }
+
+      .batch-row a {
+        color: var(--orange);
+      }
+
       .result {
         display: none;
       }
@@ -421,7 +542,7 @@
       <section class="overview">
         <div class="overview-title"><span class="dot"></span><span>完整工作流</span></div>
         <div class="steps">
-          <div class="step active" data-step="1"><strong>1. 粘贴分享</strong><span>输入夸克分享链接、提取码和 Cookie。</span></div>
+          <div class="step active" data-step="1"><strong>1. 导入分享</strong><span>粘贴单条分享，或上传 CSV 批量导入。</span></div>
           <div class="step" data-step="2"><strong>2. 本地转存</strong><span>保存到你的夸克网盘，并创建新分享。</span></div>
           <div class="step" data-step="3"><strong>3. 生成短链</strong><span>把新分享链接发送到 s.panlays.com。</span></div>
           <div class="step" data-step="4"><strong>4. 同步发布</strong><span>得到夸克原链、追踪短链，并同步飞书。</span></div>
@@ -433,26 +554,49 @@
           <h2 class="section-title">转存任务</h2>
           <section class="panel">
             <form id="transferForm">
-              <div>
-                <label for="url">夸克分享文本</label>
-                <textarea id="url" name="url" autocomplete="off" placeholder="粘贴完整分享文本，或直接粘贴 https://pan.quark.cn/s/xxxx" required></textarea>
-                <div class="hint">支持标题、链接、提取码混合粘贴；工具会自动识别夸克链接和提取码。</div>
+              <div class="mode-tabs" role="tablist" aria-label="转存方式">
+                <button class="mode-tab active" type="button" data-mode="single" role="tab" aria-selected="true">单条粘贴</button>
+                <button class="mode-tab" type="button" data-mode="batch" role="tab" aria-selected="false">CSV 批量</button>
               </div>
 
-              <div class="grid">
+              <div id="singlePanel" class="mode-panel active">
                 <div>
-                  <label for="passcode">原链接提取码</label>
-                  <input id="passcode" name="passcode" autocomplete="off" placeholder="没有就留空" />
+                  <label for="url">夸克分享文本</label>
+                  <textarea id="url" name="url" autocomplete="off" placeholder="粘贴完整分享文本，或直接粘贴 https://pan.quark.cn/s/xxxx" required></textarea>
+                  <div class="hint">支持标题、链接、提取码混合粘贴；工具会自动识别夸克链接和提取码。</div>
                 </div>
-                <div>
-                  <label for="target_fid">保存目录 fid</label>
-                  <input id="target_fid" name="target_fid" autocomplete="off" placeholder="留空表示根目录" />
+
+                <div class="grid">
+                  <div>
+                    <label for="passcode">原链接提取码</label>
+                    <input id="passcode" name="passcode" autocomplete="off" placeholder="没有就留空" />
+                  </div>
+                  <div>
+                    <label for="share_title">新分享标题</label>
+                    <input id="share_title" name="share_title" autocomplete="off" placeholder="留空则沿用原分享标题" />
+                  </div>
                 </div>
+              </div>
+
+              <div id="batchPanel" class="mode-panel">
+                <label for="csvFile">CSV 文件</label>
+                <label class="upload-box" for="csvFile">
+                  <input id="csvFile" type="file" accept=".csv,text/csv" hidden />
+                  <span>
+                    <strong>选择 CSV 文件</strong>
+                    <span>支持 UTF-8 和 GBK，单次最多 100 条</span>
+                  </span>
+                </label>
+                <div class="csv-tools">
+                  <span id="csvMeta" class="hint">尚未选择文件</span>
+                  <button id="downloadTemplate" class="ghost" type="button">下载 CSV 模板</button>
+                </div>
+                <div class="hint">推荐表头：文件名称、夸克链接、提取码。也兼容资源名称、链接、密码、title、URL、pwd。</div>
               </div>
 
               <div class="field">
-                <label for="share_title">新分享标题</label>
-                <input id="share_title" name="share_title" autocomplete="off" placeholder="留空则沿用原分享标题" />
+                <label for="target_fid">保存目录 fid</label>
+                <input id="target_fid" name="target_fid" autocomplete="off" placeholder="留空表示根目录" />
               </div>
 
               <div class="field">
@@ -476,6 +620,10 @@
                 <button id="clearBtn" class="ghost" type="button">清空任务</button>
               </div>
               <div id="message" class="message"></div>
+              <section id="batchResult" class="batch-results" aria-live="polite">
+                <strong id="batchSummary"></strong>
+                <div id="batchList" class="batch-list"></div>
+              </section>
             </form>
           </section>
 
@@ -543,6 +691,7 @@
       const autoLink = document.querySelector("#autoLink");
       const rawLink = document.querySelector("#rawLink");
       const pwdOut = document.querySelector("#pwdOut");
+      const urlInput = document.querySelector("#url");
       const targetFidInput = document.querySelector("#target_fid");
       const cookieInput = document.querySelector("#cookie");
       const rememberCookie = document.querySelector("#rememberCookie");
@@ -550,7 +699,16 @@
       const clearBtn = document.querySelector("#clearBtn");
       const shutdownBtn = document.querySelector("#shutdownBtn");
       const shutdownHint = document.querySelector("#shutdownHint");
+      const csvFile = document.querySelector("#csvFile");
+      const csvMeta = document.querySelector("#csvMeta");
+      const batchResult = document.querySelector("#batchResult");
+      const batchSummary = document.querySelector("#batchSummary");
+      const batchList = document.querySelector("#batchList");
+      const modeTabs = Array.from(document.querySelectorAll(".mode-tab"));
+      const modePanels = Array.from(document.querySelectorAll(".mode-panel"));
       const steps = Array.from(document.querySelectorAll(".step"));
+      let currentMode = "single";
+      let csvText = "";
       let lastResult = null;
 
       const savedCookie = localStorage.getItem("quark_transfer_cookie");
@@ -560,6 +718,44 @@
       }
 
       loadConfig();
+
+      modeTabs.forEach((tab) => {
+        tab.addEventListener("click", () => setMode(tab.dataset.mode));
+      });
+
+      csvFile.addEventListener("change", async () => {
+        const file = csvFile.files?.[0];
+        csvText = "";
+        if (!file) {
+          csvMeta.textContent = "尚未选择文件";
+          return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          csvFile.value = "";
+          csvMeta.textContent = "文件过大";
+          setMessage("CSV 文件不能超过 5 MB。", "error");
+          return;
+        }
+        try {
+          csvText = decodeCsv(await file.arrayBuffer());
+          csvMeta.textContent = file.name + " · " + formatBytes(file.size);
+          setMessage("CSV 已读取，点击按钮开始顺序处理。", "ok");
+        } catch (error) {
+          csvFile.value = "";
+          csvMeta.textContent = "读取失败";
+          setMessage(error.message || String(error), "error");
+        }
+      });
+
+      document.querySelector("#downloadTemplate").addEventListener("click", () => {
+        const template = "\ufeff文件名称,夸克链接,提取码\n示例资源,https://pan.quark.cn/s/xxxx,abcd\n";
+        const blob = new Blob([template], { type: "text/csv;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "quark-transfer-template.csv";
+        link.click();
+        URL.revokeObjectURL(link.href);
+      });
 
       rememberCookie.addEventListener("change", () => {
         if (!rememberCookie.checked) {
@@ -577,35 +773,54 @@
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
+        if (currentMode === "batch" && !csvText.trim()) {
+          setMessage("请先选择 CSV 文件。", "error");
+          return;
+        }
+
         setStep(2);
-        setMessage("正在读取分享信息并转存，请稍等。", "ok");
+        setMessage(
+          currentMode === "batch" ? "正在逐条转存，请勿关闭页面。" : "正在读取分享信息并转存，请稍等。",
+          "ok",
+        );
         submitBtn.disabled = true;
         resultBox.classList.remove("show");
+        batchResult.classList.remove("show");
 
         const data = Object.fromEntries(new FormData(form).entries());
         data.auto_shortlink = autoShortlink.checked;
+        if (currentMode === "batch") data.csv_text = csvText;
         if (rememberCookie.checked && data.cookie) {
           localStorage.setItem("quark_transfer_cookie", data.cookie.trim());
         }
 
         try {
-          const response = await fetch("/api/transfer", {
+          const response = await fetch(currentMode === "batch" ? "/api/transfer/batch" : "/api/transfer", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
           });
           const json = await response.json();
           if (!json.ok) throw new Error(json.error || "处理失败");
-          setStep(json.short_url ? 4 : 3);
-          lastResult = json;
-          renderResult(json);
-          if (json.short_url) {
-            const feishuText = json.feishu?.ok ? "飞书已同步。" : (json.feishu_error ? `飞书同步失败：${json.feishu_error}` : "飞书未同步。");
-            setMessage(`完成：已转存 ${json.file_count || 0} 个项目，并生成短链。${feishuText}`, json.feishu_error ? "warning" : "ok");
-          } else if (json.shortlink_error) {
-            setMessage(`转存完成，但短链生成失败：${json.shortlink_error}`, "warning");
+          if (currentMode === "batch") {
+            renderBatchResult(json);
+            setStep(json.succeeded ? 4 : 1);
+            setMessage(
+              `批量完成：成功 ${json.succeeded} 条，失败 ${json.failed} 条。短链和飞书状态见下方列表。`,
+              json.failed ? "warning" : "ok",
+            );
           } else {
-            setMessage(`完成：已转存 ${json.file_count || 0} 个项目。`, "ok");
+            setStep(json.short_url ? 4 : 3);
+            lastResult = json;
+            renderResult(json);
+            if (json.short_url) {
+              const feishuText = json.feishu?.ok ? "飞书已同步。" : (json.feishu_error ? `飞书同步失败：${json.feishu_error}` : "飞书未同步。");
+              setMessage(`完成：已转存 ${json.file_count || 0} 个项目，并生成短链。${feishuText}`, json.feishu_error ? "warning" : "ok");
+            } else if (json.shortlink_error) {
+              setMessage(`转存完成，但短链生成失败：${json.shortlink_error}`, "warning");
+            } else {
+              setMessage(`完成：已转存 ${json.file_count || 0} 个项目。`, "ok");
+            }
           }
         } catch (error) {
           setMessage(error.message || String(error), "error");
@@ -619,11 +834,15 @@
         ["url", "passcode", "share_title"].forEach((id) => {
           document.querySelector(`#${id}`).value = "";
         });
+        csvFile.value = "";
+        csvText = "";
+        csvMeta.textContent = "尚未选择文件";
         resultBox.classList.remove("show");
+        batchResult.classList.remove("show");
         lastResult = null;
         setStep(1);
-        setMessage("已清空链接和标题，保存目录 fid 已保留。", "ok");
-        document.querySelector("#url").focus();
+        setMessage("已清空当前任务，保存目录 fid 已保留。", "ok");
+        if (currentMode === "single") urlInput.focus();
       });
 
       document.querySelector("#copyShort").addEventListener("click", () => {
@@ -657,6 +876,72 @@
           shutdownHint.textContent = "退出请求已发送。如果页面稍后无法刷新，说明本机工具已经退出。";
         }
       });
+
+      function setMode(mode) {
+        currentMode = mode === "batch" ? "batch" : "single";
+        modeTabs.forEach((tab) => {
+          const active = tab.dataset.mode === currentMode;
+          tab.classList.toggle("active", active);
+          tab.setAttribute("aria-selected", String(active));
+        });
+        modePanels.forEach((panel) => {
+          panel.classList.toggle("active", panel.id === (currentMode === "batch" ? "batchPanel" : "singlePanel"));
+        });
+        urlInput.required = currentMode === "single";
+        submitBtn.textContent = currentMode === "batch" ? "开始批量转存 →" : "开始转存并生成短链 →";
+        resultBox.classList.remove("show");
+        batchResult.classList.remove("show");
+        setStep(1);
+      }
+
+      function decodeCsv(buffer) {
+        try {
+          return new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+        } catch (error) {
+          return new TextDecoder("gbk").decode(buffer);
+        }
+      }
+
+      function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + " B";
+        return (bytes / 1024).toFixed(1) + " KB";
+      }
+
+      function renderBatchResult(data) {
+        batchSummary.textContent = `共 ${data.total} 条：成功 ${data.succeeded}，失败 ${data.failed}`;
+        batchList.replaceChildren();
+        const rows = [
+          ...data.results.map((item) => ({ ...item, status: "success" })),
+          ...data.errors.map((item) => ({ ...item, status: "error" })),
+        ].sort((left, right) => left.row_number - right.row_number);
+        rows.forEach((item) => {
+          const row = document.createElement("article");
+          row.className = item.status === "error" ? "batch-row error" : "batch-row";
+          if (item.status === "error") {
+            row.innerHTML = `
+              <div class="batch-row-head"><span>第 ${item.row_number} 行 · ${escapeHtml(item.title || "未命名资源")}</span><span>失败</span></div>
+              <p>${escapeHtml(item.error || "处理失败")}</p>
+            `;
+          } else {
+            const link = item.short_url || item.share_url_with_pwd || item.share_url || "";
+            const feishu = item.shortlink_error
+              ? "短链生成失败：" + item.shortlink_error
+              : (item.feishu?.ok ? "飞书已同步" : (item.feishu_error ? "飞书同步失败：" + item.feishu_error : "飞书未同步"));
+            row.innerHTML = `
+              <div class="batch-row-head"><span>第 ${item.row_number} 行 · ${escapeHtml(item.title || "未命名资源")}</span><span>成功</span></div>
+              <p>${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noreferrer">${escapeHtml(link)}</a>` : "未生成链接"} · ${escapeHtml(feishu)}</p>
+            `;
+          }
+          batchList.appendChild(row);
+        });
+        batchResult.classList.add("show");
+      }
+
+      function escapeHtml(value) {
+        const node = document.createElement("span");
+        node.textContent = String(value || "");
+        return node.innerHTML;
+      }
 
       function renderResult(data) {
         const preferredUrl = data.share_url_with_pwd || data.share_url;

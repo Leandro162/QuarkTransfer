@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import csv
+import io
 import json
 import mimetypes
 import argparse
@@ -46,6 +48,10 @@ COMPACT_DATE_SUFFIX_RE = re.compile(rf"\s+{COMPACT_DATE_TOKEN}\s*$")
 CHINESE_DATE_PREFIX_RE = re.compile(rf"^\s*{CHINESE_DATE_TOKEN}\s*")
 CHINESE_DATE_SUFFIX_RE = re.compile(rf"\s*{CHINESE_DATE_TOKEN}\s*$")
 TRACKER_LOCK = Lock()
+MAX_BATCH_ROWS = 100
+CSV_URL_COLUMNS = ("夸克链接", "夸克网盘", "链接", "分享链接", "url")
+CSV_TITLE_COLUMNS = ("文件名称", "资源名称", "标题", "软件关键词", "title")
+CSV_PASSCODE_COLUMNS = ("提取码", "密码", "访问码", "passcode", "pwd")
 
 
 class AppHandler(BaseHTTPRequestHandler):
@@ -94,6 +100,16 @@ class AppHandler(BaseHTTPRequestHandler):
                 link = create_tracked_link(payload, self.base_url())
                 self.send_json({"ok": True, "link": link, **tracker_snapshot(self.base_url())})
             except ValueError as exc:
+                self.send_json({"ok": False, "error": str(exc)}, status=400)
+            except Exception as exc:  # noqa: BLE001
+                self.send_json({"ok": False, "error": f"服务端错误: {exc}"}, status=500)
+            return
+
+        if path == "/api/transfer/batch":
+            try:
+                payload = self.read_json()
+                self.send_json(transfer_batch(payload))
+            except (ValueError, QuarkError) as exc:
                 self.send_json({"ok": False, "error": str(exc)}, status=400)
             except Exception as exc:  # noqa: BLE001
                 self.send_json({"ok": False, "error": f"服务端错误: {exc}"}, status=500)
@@ -157,6 +173,92 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt: str, *args: Any) -> None:
         print(fmt % args)
+
+
+def parse_csv_rows(csv_text: str) -> list[dict[str, Any]]:
+    text = str(csv_text or "").lstrip("\ufeff").strip()
+    if not text:
+        raise ValueError("请选择包含数据的 CSV 文件。")
+
+    reader = csv.DictReader(io.StringIO(text))
+    fieldnames = [str(name or "").strip() for name in (reader.fieldnames or [])]
+    if not fieldnames:
+        raise ValueError("CSV 文件缺少表头。")
+
+    url_column = find_csv_column(fieldnames, CSV_URL_COLUMNS)
+    if not url_column:
+        raise ValueError("CSV 文件缺少夸克链接列。")
+    title_column = find_csv_column(fieldnames, CSV_TITLE_COLUMNS)
+    passcode_column = find_csv_column(fieldnames, CSV_PASSCODE_COLUMNS)
+
+    rows: list[dict[str, Any]] = []
+    for row_number, raw_row in enumerate(reader, start=2):
+        row = {str(key or "").strip(): str(value or "").strip() for key, value in raw_row.items()}
+        url = row.get(url_column, "")
+        if not url:
+            continue
+        rows.append(
+            {
+                "row_number": row_number,
+                "share_title": row.get(title_column, "") if title_column else "",
+                "url": url,
+                "passcode": row.get(passcode_column, "") if passcode_column else "",
+            }
+        )
+        if len(rows) > MAX_BATCH_ROWS:
+            raise ValueError(f"每次最多处理 {MAX_BATCH_ROWS} 条有效数据。")
+
+    if not rows:
+        raise ValueError("CSV 文件中没有可处理的夸克链接。")
+    return rows
+
+
+def find_csv_column(fieldnames: list[str], aliases: tuple[str, ...]) -> str:
+    lookup = {name.casefold(): name for name in fieldnames}
+    for alias in aliases:
+        matched = lookup.get(alias.casefold())
+        if matched:
+            return matched
+    return ""
+
+
+def transfer_batch(payload: dict[str, Any]) -> dict[str, Any]:
+    rows = parse_csv_rows(str(payload.get("csv_text") or ""))
+    common = {
+        "cookie": str(payload.get("cookie") or ""),
+        "target_fid": str(payload.get("target_fid") or ""),
+        "auto_shortlink": bool(payload.get("auto_shortlink")),
+    }
+    results: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+
+    for row in rows:
+        transfer_payload = {
+            "url": row["url"],
+            "passcode": row["passcode"],
+            "share_title": row["share_title"],
+            **common,
+        }
+        try:
+            item = transfer(transfer_payload)
+            results.append({"row_number": row["row_number"], **item})
+        except Exception as exc:  # noqa: BLE001
+            errors.append(
+                {
+                    "row_number": row["row_number"],
+                    "title": row["share_title"] or "未命名资源",
+                    "error": str(exc),
+                }
+            )
+
+    return {
+        "ok": True,
+        "total": len(rows),
+        "succeeded": len(results),
+        "failed": len(errors),
+        "results": results,
+        "errors": errors,
+    }
 
 
 def transfer(payload: dict[str, Any]) -> dict[str, Any]:
