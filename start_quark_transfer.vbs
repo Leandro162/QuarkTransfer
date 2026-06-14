@@ -5,8 +5,14 @@ Dim shell, command, url, ready, i, request, exitCode
 Set shell = CreateObject("WScript.Shell")
 
 url = "http://127.0.0.1:8765/"
-command = "wsl.exe -d Ubuntu-24.04 -- bash /home/xuelong/projects/Tools/QuarkTransfer/start_home_service.sh"
+command = "schtasks.exe /Run /TN QuarkTransferAlwaysOn"
 exitCode = shell.Run(command, 0, True)
+
+If exitCode <> 0 Then
+  command = "wsl.exe -d Ubuntu-24.04 -- bash /home/xuelong/projects/Tools/QuarkTransfer/run_home_service_forever.sh"
+  shell.Run command, 0, False
+  exitCode = 0
+End If
 
 If exitCode <> 0 Then
   MsgBox "Home directory QuarkTransfer failed to start." & vbCrLf & _

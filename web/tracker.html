@@ -378,7 +378,9 @@
       const todayTotal = document.querySelector("#todayTotal");
       const allTotal = document.querySelector("#allTotal");
       const linkTotal = document.querySelector("#linkTotal");
+      let localToken = "";
 
+      const configReady = loadLocalConfig();
       loadLinks();
 
       form.addEventListener("submit", async (event) => {
@@ -387,10 +389,15 @@
         setMessage("正在生成追踪链接。", "ok");
 
         try {
+          await configReady;
+          if (!localToken) throw new Error("无法取得本机令牌，请刷新页面后重试。");
           const payload = Object.fromEntries(new FormData(form).entries());
           const response = await fetch("/api/tracker/links", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "X-Local-Token": localToken,
+            },
             body: JSON.stringify(payload),
           });
           const json = await response.json();
@@ -412,6 +419,13 @@
         await copyText(button.dataset.copy);
         setMessage("已复制追踪链接。", "ok");
       });
+
+      async function loadLocalConfig() {
+        const response = await fetch("/api/config");
+        const json = await response.json();
+        if (!json.ok) throw new Error(json.error || "读取本机配置失败");
+        localToken = json.local_token || "";
+      }
 
       async function loadLinks() {
         const response = await fetch("/api/tracker/links");

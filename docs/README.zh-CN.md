@@ -10,18 +10,23 @@
 - 可自动生成 `s.panlays.com` 云端短链。
 - 本地追踪页面可生成 `127.0.0.1` 临时追踪链接。
 
-## 启动本地工具
+## 常驻本地服务
 
-```bash
-cd /home/xuelong/projects/Tools/QuarkTransfer
-python3 server.py --port 8765
-```
-
-然后打开：
+QuarkTransfer 通过 Windows 登录计划任务 `QuarkTransferAlwaysOn` 自动启动，并只监听：
 
 ```text
 http://127.0.0.1:8765
 ```
+
+守护脚本会在服务异常退出后自动重启。页面不再提供关闭按钮，后端也不再暴露关闭接口。
+
+首次安装或需要重建计划任务时，在 PowerShell 中运行：
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File "\\wsl.localhost\Ubuntu-24.04\home\xuelong\projects\Tools\QuarkTransfer\install_always_on_task.ps1"
+```
+
+写接口使用自动生成的本机令牌保护。令牌保存在 `config/local_token.txt`，页面会自动读取，无需手工填写。该文件已被 Git 忽略。
 
 追踪页面：
 

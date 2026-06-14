@@ -2,17 +2,19 @@
 from __future__ import annotations
 
 import csv
+import hmac
 import io
 import json
 import mimetypes
 import argparse
 import os
 import re
+import secrets
 import uuid
 from datetime import date, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Lock
 from typing import Any
 from urllib.error import HTTPError
 from urllib.parse import urlparse
@@ -28,6 +30,7 @@ TRACKER_FILE = ROOT / "config" / "tracked_links.json"
 SHORTLINK_TOKEN_FILE = ROOT / "config" / "shortlink_token.txt"
 SHORTLINK_API_FILE = ROOT / "config" / "shortlink_api.txt"
 FEISHU_CONFIG_FILE = ROOT / "config" / "feishu.json"
+LOCAL_TOKEN_FILE = ROOT / "config" / "local_token.txt"
 DEFAULT_SHORTLINK_API = "https://s.panlays.com/api/links"
 FEISHU_TOKEN_API = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
 FEISHU_RECORD_API = "https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records"
@@ -52,6 +55,7 @@ MAX_BATCH_ROWS = 100
 CSV_URL_COLUMNS = ("夸克链接", "夸克网盘", "链接", "分享链接", "url")
 CSV_TITLE_COLUMNS = ("文件名称", "资源名称", "标题", "软件关键词", "title")
 CSV_PASSCODE_COLUMNS = ("提取码", "密码", "访问码", "passcode", "pwd")
+PROTECTED_POST_PATHS = frozenset({"/api/transfer", "/api/transfer/batch", "/api/tracker/links"})
 
 
 class AppHandler(BaseHTTPRequestHandler):
@@ -73,6 +77,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     "shortlink_enabled": bool(load_shortlink_token()),
                     "shortlink_api": load_shortlink_api(),
                     "feishu_enabled": bool(load_feishu_config()),
+                    "local_token": load_local_token(),
                 }
             )
             return
@@ -89,9 +94,15 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = self.path.split("?", 1)[0]
-        if path == "/api/shutdown":
-            self.send_json({"ok": True, "message": "本地服务正在关闭。"})
-            Thread(target=self.server.shutdown, daemon=True).start()
+        if not is_supported_post_path(path):
+            self.send_json({"ok": False, "error": "Not found"}, status=404)
+            return
+
+        if requires_local_token(path) and not valid_local_token(
+            self.headers.get("X-Local-Token", ""),
+            load_local_token(),
+        ):
+            self.send_json({"ok": False, "error": "本机令牌无效，请刷新页面后重试。"}, status=403)
             return
 
         if path == "/api/tracker/links":
@@ -115,10 +126,6 @@ class AppHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "error": f"服务端错误: {exc}"}, status=500)
             return
 
-        if path != "/api/transfer":
-            self.send_json({"ok": False, "error": "Not found"}, status=404)
-            return
-
         try:
             payload = self.read_json()
             result = transfer(payload)
@@ -139,6 +146,7 @@ class AppHandler(BaseHTTPRequestHandler):
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -173,6 +181,37 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt: str, *args: Any) -> None:
         print(fmt % args)
+
+
+def is_loopback_host(host: str) -> bool:
+    return host in {"127.0.0.1", "localhost"}
+
+
+def is_supported_post_path(path: str) -> bool:
+    return path in PROTECTED_POST_PATHS
+
+
+def requires_local_token(path: str) -> bool:
+    return path in PROTECTED_POST_PATHS
+
+
+def valid_local_token(provided: str, expected: str) -> bool:
+    return bool(provided and expected and hmac.compare_digest(provided, expected))
+
+
+def load_local_token() -> str:
+    if LOCAL_TOKEN_FILE.exists():
+        token = LOCAL_TOKEN_FILE.read_text(encoding="utf-8").strip()
+        if token:
+            return token
+    LOCAL_TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+    token = secrets.token_urlsafe(32)
+    LOCAL_TOKEN_FILE.write_text(token, encoding="utf-8")
+    try:
+        LOCAL_TOKEN_FILE.chmod(0o600)
+    except OSError:
+        pass
+    return token
 
 
 def parse_csv_rows(csv_text: str) -> list[dict[str, Any]]:
@@ -623,6 +662,8 @@ def main() -> int:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", default=8765, type=int)
     args = parser.parse_args()
+    if not is_loopback_host(args.host):
+        parser.error("QuarkTransfer only supports --host 127.0.0.1 or localhost.")
     address = (args.host, args.port)
     httpd = ThreadingHTTPServer(address, AppHandler)
     print(f"Quark Transfer HTML is running at http://{address[0]}:{address[1]}")

@@ -10,18 +10,23 @@ This tool accepts a Quark Drive share link, saves the shared content into your o
 - Optionally create a cloud short link on `s.panlays.com`.
 - Use the local tracker page to create temporary `127.0.0.1` tracking links.
 
-## Start the Local Tool
+## Always-On Local Service
 
-```bash
-cd /home/xuelong/projects/Tools/QuarkTransfer
-python3 server.py --port 8765
-```
-
-Then open:
+QuarkTransfer starts automatically at Windows sign-in through the `QuarkTransferAlwaysOn` scheduled task and only listens on:
 
 ```text
 http://127.0.0.1:8765
 ```
+
+The watchdog restarts the server after an unexpected exit. The UI no longer contains a shutdown button, and the backend no longer exposes a shutdown endpoint.
+
+To install or rebuild the task, run this command in PowerShell:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File "\\wsl.localhost\Ubuntu-24.04\home\xuelong\projects\Tools\QuarkTransfer\install_always_on_task.ps1"
+```
+
+Mutating APIs use an automatically generated local token. It is stored in `config/local_token.txt`, loaded by the page automatically, and ignored by Git.
 
 Tracker page:
 

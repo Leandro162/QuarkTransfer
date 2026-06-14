@@ -487,36 +487,6 @@
         line-height: 1.65;
       }
 
-      .local-exit {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 16px;
-        align-items: center;
-        margin-top: 28px;
-        padding: 18px 20px;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        background: #fffdfa;
-      }
-
-      .local-exit h2 {
-        margin: 0;
-        font-size: 17px;
-      }
-
-      .local-exit .hint {
-        margin-top: 6px;
-      }
-
-      .local-exit .danger {
-        min-width: 142px;
-      }
-
-      #shutdownHint {
-        grid-column: 1 / -1;
-        margin: 0;
-      }
-
       @media (max-width: 900px) {
         main {
           width: min(100% - 22px, 1120px);
@@ -526,8 +496,7 @@
         .layout,
         .steps,
         .grid,
-        .actions-row,
-        .local-exit {
+        .actions-row {
           grid-template-columns: 1fr;
         }
       }
@@ -671,14 +640,6 @@
         </aside>
       </div>
 
-      <section class="local-exit" aria-labelledby="localExitTitle">
-        <div>
-          <h2 id="localExitTitle">本机工具</h2>
-          <p class="hint">只退出当前电脑上的 127.0.0.1 本地服务，不影响 s.panlays.com 云端后台和已生成短链。</p>
-        </div>
-        <button id="shutdownBtn" class="danger" type="button">退出本机工具</button>
-        <p id="shutdownHint" class="hint"></p>
-      </section>
     </main>
 
     <script>
@@ -697,8 +658,6 @@
       const rememberCookie = document.querySelector("#rememberCookie");
       const autoShortlink = document.querySelector("#autoShortlink");
       const clearBtn = document.querySelector("#clearBtn");
-      const shutdownBtn = document.querySelector("#shutdownBtn");
-      const shutdownHint = document.querySelector("#shutdownHint");
       const csvFile = document.querySelector("#csvFile");
       const csvMeta = document.querySelector("#csvMeta");
       const batchResult = document.querySelector("#batchResult");
@@ -710,6 +669,7 @@
       let currentMode = "single";
       let csvText = "";
       let lastResult = null;
+      let localToken = "";
 
       const savedCookie = localStorage.getItem("quark_transfer_cookie");
       if (savedCookie) {
@@ -717,7 +677,7 @@
         rememberCookie.checked = true;
       }
 
-      loadConfig();
+      const configReady = loadConfig();
 
       modeTabs.forEach((tab) => {
         tab.addEventListener("click", () => setMode(tab.dataset.mode));
@@ -795,9 +755,14 @@
         }
 
         try {
+          await configReady;
+          if (!localToken) throw new Error("无法取得本机令牌，请刷新页面后重试。");
           const response = await fetch(currentMode === "batch" ? "/api/transfer/batch" : "/api/transfer", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              "X-Local-Token": localToken,
+            },
             body: JSON.stringify(data),
           });
           const json = await response.json();
@@ -861,20 +826,6 @@
         if (!lastResult) return;
         const publishUrl = lastResult.short_url || lastResult.share_url_with_pwd || lastResult.share_url;
         copyText(`${lastResult.title || "夸克分享"}\n${publishUrl}`);
-      });
-
-      shutdownBtn.addEventListener("click", async () => {
-        const confirmed = window.confirm("确定退出本机工具吗？只会关闭当前电脑上的 127.0.0.1 服务，s.panlays.com 云端后台和已生成短链不会受影响。");
-        if (!confirmed) return;
-        shutdownBtn.disabled = true;
-        shutdownHint.textContent = "正在退出本机工具...";
-        setMessage("本机工具正在退出。下次使用请双击启动器重新打开。", "warning");
-        try {
-          await fetch("/api/shutdown", { method: "POST" });
-          shutdownHint.textContent = "本机工具已退出，可以直接关闭这个浏览器页面。";
-        } catch (error) {
-          shutdownHint.textContent = "退出请求已发送。如果页面稍后无法刷新，说明本机工具已经退出。";
-        }
       });
 
       function setMode(mode) {
@@ -962,6 +913,7 @@
         try {
           const response = await fetch("/api/config");
           const json = await response.json();
+          if (json.ok) localToken = json.local_token || "";
           if (json.ok && json.target_fid && !targetFidInput.value.trim()) {
             targetFidInput.value = json.target_fid;
           }
